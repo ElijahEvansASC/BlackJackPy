@@ -1,6 +1,6 @@
 from utils import InputValidateAndSanitize as ivs
 from card import Deck
-from player import Colors
+from player import Colors, Player, AIPlayer
 #Add input validation logic within the class
 class GameModifiers:
     def __init__(self):
@@ -51,31 +51,18 @@ class Game:
         players = {}
         colors = Colors.get_colors() #Gets list of colors
 
-        for i in range(1, player_count):
-            color_name = colors[i % len(colors)] #Modulo avoids index error
-            players[f"{color_name} Player"] = {
-                "chips" : 1000, #Initial chip count
-                "bet": 0, #Initial bet amount
-                "cards": [], #initial empty card list
-                "status": "active"
-            }
-
         #Dictionary for User
-        players["You"] = {
-                "chips" : 1000, #Initial chip count
-                "bet": 0, #Initial bet amount
-                "cards": [], #initial empty card list
-                "status": "active"
-        }
+        players["You"] = Player(name = "You") 
+
+        for i in range(1, player_count):
+            color_name = colors[i % len(colors)]  # Modulo avoids index error
+            players[f"{color_name} Player"] = AIPlayer(name=f"{color_name} Player", is_dealer = False)
 
         return players
     
     def initialize_dealer(self):
         #Dictionary for dealer
-        dealer = {
-            "cards": [],
-            "status": "waiting"
-        }
+        dealer = AIPlayer(name="Dealer", is_dealer = True)
         return dealer
     
     def initialize_game(self):
@@ -100,15 +87,61 @@ class StandardGame:
     
     def deal_initial_cards(self):
         num_initial_cards = 2 #Number of initial cards dealt.
+
         for _ in range(num_initial_cards): #For the integer in the range of the value stored in num_initial_cards, repeat the loop (Twice).
-            for player in self.players:
+            for player_name in self.players:
+                player = self.players[player_name]
                 card = self.deck.deal(1)[0]
-                self.players[player]["cards"].append(card)
+                player.hand.append(card)
 
             card = self.deck.deal(1)[0]
-            self.dealer["cards"].append(card)
+            self.dealer.hand.append(card)
 
+    def hit(self, player):
+        card = self.deck.deal(1)[0]
+        player.hand.append(card)
         
+    def stand(self, player):
+        print(f"{self.players[player]} stands.")
+
+    def double_down(self, player):
+        self.players[player]["chips"] -= self.players[player]["bet"]
+        self.players[player]["bet"] *= 2
+        self.hit(player)
+        self.stand(player)
+
+    
+    def calculate_hand_value(self, cards):
+        hand_value = 0
+        num_aces = 0
+        for card in cards:
+            if card.rank in ['J','Q','K']:
+                hand_value += 10
+            elif card.rank == 'A':
+                value += 11
+                num_aces += 1
+            else:
+                value += int(card.rank)
+
+        while hand_value > 21 and num_aces:
+            hand_value -= 10
+            num_aces -= 1
+
+    def determine_round_winner(self):
+        dealer_value = self.calculate_hand_value(self.dealer["cards"])
+        results = {}
+        for player in self.players:
+            if player["status"] == "waiting":
+                player_value = self.calculate_hand_value(self.players[player]["cards"])
+                if player_value > 21:
+                    results[player] = "Bust"
+                elif dealer_value > 21 or player_value > dealer_value:
+                    results[player] = "Win"
+                elif player_value < dealer_value:
+                    results[player] = "Lose"
+                else:
+                    results[player] = "Push"
+        return results
 
     def start(self):
         #Deal Initial Cards.
