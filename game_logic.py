@@ -1,6 +1,28 @@
 from utils import InputValidateAndSanitize as ivs
 from card import Deck
 from player import Colors, Player, AIPlayer
+
+class Payouts:
+    def standard(bet_amount):
+        winnings = bet_amount
+        payout = winnings + bet_amount
+        return payout
+
+    def natural_blackjack(bet_amount):
+        winnings = bet_amount * 1.5
+        payout = winnings + bet_amount
+        return payout
+    
+    def insurance(bet_amount):
+        winnings = bet_amount * 2
+        payout = winnings
+        return payout
+    
+    def push(bet_amount):
+        winnings = 0
+        payout = winnings + bet_amount
+        return payout
+    
 #Add input validation logic within the class
 class GameModifiers:
     def __init__(self):
@@ -98,9 +120,6 @@ class StandardGame:
 
             card = self.deck.deal(1)[0]
             self.dealer.hand.append(card)
-
-        print(f"Your Hand: {self.players["You"].hand}")
-        print(f"Dealer's Face Up Card: {self.dealer.hand[0]}")
     
     def place_initial_bets(self):
         for player_name in self.players:
@@ -109,7 +128,42 @@ class StandardGame:
                 self.AI_betting_logic(player)
             else:
                 self.betting_prompt(player)
+
+    def natural_blackjack_check(self):
+        #Output status of hands after initial deal
+        print(f"Your Hand: {self.players["You"].hand}")
+        print(f"Dealer's Face Up Card: {self.dealer.hand[0]}")
+
+        dealer_upcard = self.dealer.hand[0]
+        if dealer_upcard.rank == "A":
+            print("Insurance Bet Logic")
+            self.game_round_logic()
+        else:
+            for player_name in self.players:
+                player = self.players[player_name]
+                player.hand_value = self.calculate_hand_value(player.hand)
+                if player.hand_value == 21:
+                    print(f"{player.name} has a natural blackjack!")
+                    player.status = ['inactive']
+                    player.chip_balance += Payouts.natural_blackjack(player.bet)
+                    print (player.chip_balance)
+                    print(player.hand)
+            self.game_round_logic()
     
+
+    #Working Here! =====================================================
+    def game_round_logic(self):
+        for player_name in self.players:
+            player = self.players[player_name]
+            if player.status == 'active':
+                if hasattr(player, 'AI'):
+                    self.AI_round_decision_logic(player)
+                else:
+                    self.round_decision(player)
+        for player_name in self.players:
+            player = self.players[player_name]
+            if player.status == 'active':
+
     def betting_prompt(self, player):
         while True:
             player.bet = input("Enter your betting amount in multiples of 5. Min bet of $5, Max bet of $500:")
@@ -148,14 +202,15 @@ class StandardGame:
             if card.rank in ['J','Q','K']:
                 hand_value += 10
             elif card.rank == 'A':
-                value += 11
+                hand_value += 11
                 num_aces += 1
             else:
-                value += int(card.rank)
+                hand_value += int(card.rank)
 
         while hand_value > 21 and num_aces:
             hand_value -= 10
             num_aces -= 1
+        return hand_value
 
     def determine_round_winner(self):
         dealer_value = self.calculate_hand_value(self.dealer["cards"])
@@ -174,14 +229,14 @@ class StandardGame:
         return results
 
     def start(self):
-
         #Place Initial bet
         self.place_initial_bets()
         #Deal Initial Cards.
         self.deal_initial_cards()
-        #Remaining Game Logic (Calculate card values when they change).
-        #If dealer up card is an Ace, reveal second card after insurance bet.
+        #If dealer up card is an Ace, reveal second card after insurance bet OR check for players if they have a natural blackjack.
+        self.natural_blackjack_check()
         #Else, Prompt each player for an action.
+        self.game_round_logic()
         #At the end of all player actions, reveal cards and calculate wins and losses
         #Prompt to leave table if desired
         #Restart the game loop.

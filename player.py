@@ -6,7 +6,11 @@ class Player:
         self.name = name
         self.chip_balance = chip_balance
         self.hand = []
+        self.hand_value = 0
         self.split_hand = []
+        self.split_hand_value = 0
+        self.ace_count = 0
+        self.split_ace_count = 0
         self.bet = 0
         self.status = "active"
 
