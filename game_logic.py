@@ -190,26 +190,30 @@ class StandardGame:
         self.player_bust_determination(player)
 
     def round_decision(self, player):
-        while True:
-            player_decision = input("Enter 'st' to stand, 'h' to hit, 'dd' to double down, or 'sp' to split:")
-            validated_player_decision = ivs.is_string_input(player_decision)
-            print(validated_player_decision)
-            if validated_player_decision == 'st':
-                self.stand(player)
-                break
-            elif validated_player_decision == 'h':
-                self.hit(player)
-                player.hand_value = self.calculate_hand_value(player.hand)
-                self.player_bust_determination(player)
-                if player.status == 'inactive':
-                    break  # Exit loop if player busts
-            elif validated_player_decision == 'dd':
-                self.double_down(player)
-                break
-            elif validated_player_decision == 'sp':
-                print('Player Split Logic.')
+        choices = ['h', 'st', 'dd', 'sp']
+        valid_choice = False
+    
+        while not valid_choice:
+            player_decision = input("Enter 'st' to stand, 'h' to hit, 'dd' to double down, or 'sp' to split: ").strip().lower()
+        
+            if player_decision in choices:
+                validated_player_decision = player_decision
+                valid_choice = True
             else:
-                print("That is not an acceptable option.")
+                print("That is not an acceptable option. Please try again.")
+    
+    # Proceed with the valid choice
+        if validated_player_decision == 'st':
+            self.stand(player)
+        elif validated_player_decision == 'h':
+            self.hit(player)
+            player.hand_value = self.calculate_hand_value(player.hand)
+            self.player_bust_determination(player)
+        elif validated_player_decision == 'dd':
+            self.double_down(player)
+        elif validated_player_decision == 'sp':
+            print('Player Split Logic.')
+
 
     def betting_prompt(self, player):
         while True:
@@ -284,5 +288,6 @@ class StandardGame:
         #Else, Prompt each player for an action.
         self.game_round_logic()
         #At the end of all player actions, reveal cards and calculate wins and losses
+        print('Round over.')
         #Prompt to leave table if desired
         #Restart the game loop.
