@@ -10,19 +10,6 @@ class Player:
         self.bet = 0
         self.status = "active"
 
-    def initial_bet(self, amount):
-        if amount <= self.chip_balance:
-            self.bet = amount
-            self.chip_balance -= amount
-        else:
-            raise ValueError("Insufficient chip balance to bet this amount.")
-        
-    def draw_card(self, card):
-        self.hand.append(card)
-    
-    def draw_split_card(self, card):
-        self.split_hand.append(card)
-
     def reset(self):
         self.bet = 0
         self.hand = []

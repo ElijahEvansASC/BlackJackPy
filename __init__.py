@@ -7,9 +7,7 @@ if __name__ == '__main__':
     print(f"Number of Players: {game_init.player_count}")
 
     game = Game(game_init.deck_number, game_init.player_count, game_init.ruleset)
-    
-    game.start()
     print("Game Start:")
-    print(f"{game.players["You"].hand}")
-    print(f"{game.dealer.hand}")
+    game.start()
+
 

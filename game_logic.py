@@ -80,10 +80,12 @@ class Game:
             raise RuntimeError("Game not initialized.")
             
 class StandardGame:
-    def __init__(self, deck, players, dealer):
+    def __init__(self, deck, players, dealer, min_bet = 5, max_bet = 500):
         self.deck = deck
         self.players = players
         self.dealer = dealer
+        self.min_bet = min_bet
+        self.max_bet = max_bet
     
     def deal_initial_cards(self):
         num_initial_cards = 2 #Number of initial cards dealt.
@@ -96,6 +98,34 @@ class StandardGame:
 
             card = self.deck.deal(1)[0]
             self.dealer.hand.append(card)
+
+        print(f"Your Hand: {self.players["You"].hand}")
+        print(f"Dealer's Face Up Card: {self.dealer.hand[0]}")
+    
+    def place_initial_bets(self):
+        for player_name in self.players:
+            player = self.players[player_name]
+            if hasattr(player, 'AI'):
+                self.AI_betting_logic(player)
+            else:
+                self.betting_prompt(player)
+    
+    def betting_prompt(self, player):
+        while True:
+            player.bet = input("Enter your betting amount in multiples of 5. Min bet of $5, Max bet of $500:")
+            player.bet = ivs.is_num_input(player.bet)
+               # Check if the bet is within the valid range and is a multiple of 5
+            if player.bet is not None and self.min_bet <= player.bet <= self.max_bet and player.bet % 5 == 0:
+                player.chip_balance -= player.bet
+                print(f'{player.name} bets ${player.bet}.')
+                return player.bet
+            else:
+                print(f"Bet must be between ${self.min_bet} and ${self.max_bet} and in multiples of 5.")
+    
+    def AI_betting_logic(self, player):
+        player.bet = self.min_bet
+        player.chip_balance -= player.bet
+        print(f'{player.name} bets ${player.bet}.')
 
     def hit(self, player):
         card = self.deck.deal(1)[0]
@@ -144,6 +174,14 @@ class StandardGame:
         return results
 
     def start(self):
+
+        #Place Initial bet
+        self.place_initial_bets()
         #Deal Initial Cards.
         self.deal_initial_cards()
-        #Remaining Game Logic.
+        #Remaining Game Logic (Calculate card values when they change).
+        #If dealer up card is an Ace, reveal second card after insurance bet.
+        #Else, Prompt each player for an action.
+        #At the end of all player actions, reveal cards and calculate wins and losses
+        #Prompt to leave table if desired
+        #Restart the game loop.
