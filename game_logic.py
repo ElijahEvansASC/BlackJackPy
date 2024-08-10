@@ -137,7 +137,7 @@ class StandardGame:
         dealer_upcard = self.dealer.hand[0]
         if dealer_upcard.rank == "A":
             print("Insurance Bet Logic")
-            self.game_round_logic()
+            self.deal_insurance_bets()
         else:
             for player_name in self.players:
                 player = self.players[player_name]
@@ -191,29 +191,38 @@ class StandardGame:
 
     def round_decision(self, player):
         choices = ['h', 'st', 'dd', 'sp']
-        valid_choice = False
     
-        while not valid_choice:
-            player_decision = input("Enter 'st' to stand, 'h' to hit, 'dd' to double down, or 'sp' to split: ").strip().lower()
+        while player.status == 'active':  # Continue while the player is active
+            valid_choice = False
         
-            if player_decision in choices:
-                validated_player_decision = player_decision
-                valid_choice = True
-            else:
-                print("That is not an acceptable option. Please try again.")
-    
-    # Proceed with the valid choice
-        if validated_player_decision == 'st':
-            self.stand(player)
-        elif validated_player_decision == 'h':
-            self.hit(player)
-            player.hand_value = self.calculate_hand_value(player.hand)
-            self.player_bust_determination(player)
-        elif validated_player_decision == 'dd':
-            self.double_down(player)
-        elif validated_player_decision == 'sp':
-            print('Player Split Logic.')
-
+            while not valid_choice:
+                player_decision = input("Enter 'st' to stand, 'h' to hit, 'dd' to double down, or 'sp' to split: ").strip().lower()
+            
+                if player_decision in choices:
+                    valid_choice = True
+                else:
+                    print("That is not an acceptable option. Please try again.")
+        
+            # Proceed with the valid choice
+            if player_decision == 'st':
+                self.stand(player)
+                player.status = 'inactive'  # Set status to inactive after standing
+            elif player_decision == 'h':
+                self.hit(player)
+                player.hand_value = self.calculate_hand_value(player.hand)
+                self.player_bust_determination(player)
+                # After hitting, check if the player has busted or not
+                if player.status == 'active':
+                    # Prompt again if the player has not busted
+                    continue
+                else:
+                    break
+            elif player_decision == 'dd':
+                self.double_down(player)
+                player.status = 'inactive'  # Set status to inactive after doubling down
+            elif player_decision == 'sp':
+                print('Player Split Logic.')
+            # Handle split logic here if applicable
 
     def betting_prompt(self, player):
         while True:
@@ -274,20 +283,42 @@ class StandardGame:
             player.chip_balance += Payouts.standard(player.bet)
         elif player.hand_value < dealer.hand_value:
             print(f"{player.name} loses with a hand of {player.hand_value} to {dealer.hand_value}.")
-        else:
+        elif player.hand_value == dealer.hand_value:
             print(f"{player.name} has a push with the dealer, no winner.")
             player.chip_balance += player.bet
 #====================
     def start(self):
-        #Place Initial bet
-        self.place_initial_bets()
-        #Deal Initial Cards.
-        self.deal_initial_cards()
-        #If dealer up card is an Ace, reveal second card after insurance bet OR check for players if they have a natural blackjack.
-        self.natural_blackjack_check()
-        #Else, Prompt each player for an action.
-        self.game_round_logic()
-        #At the end of all player actions, reveal cards and calculate wins and losses
-        print('Round over.')
-        #Prompt to leave table if desired
-        #Restart the game loop.
+        while True:
+            #Place Initial bet
+            self.place_initial_bets()
+            #Deal Initial Cards.
+            self.deal_initial_cards()
+            #If dealer up card is an Ace, reveal second card after insurance bet OR check for players if they have a natural blackjack.
+            self.natural_blackjack_check()
+            #Else, Prompt each player for an action.
+            self.game_round_logic()
+            #At the end of all player actions, reveal cards and calculate wins and losses
+            print('Round over.')
+            #Prompt to leave table if desired
+            for player_name in self.players:
+                player = self.players[player_name]
+                print("")
+                print(f'{player.name} Hand: {player.hand}')
+                print(f'{player.name} Bet: {player.bet}')
+                print(f'{player.name} Status: {player.status}')
+                print(f'{player.name} Chip Balance: {player.chip_balance}')
+            
+                print("")
+                print(f'{self.dealer.name} Hand: {self.dealer.hand}')
+                print(f'{self.dealer.name} Status: {self.dealer.status}')
+            continue_game = input("Do you want to play another round? (yes/no): ").strip().lower()
+            if continue_game != 'yes':
+                break
+            else:
+                for player_name in self.players:
+                    player = self.players[player_name]
+                    Player.reset(player)
+                    Player.reset(self.dealer)
+
+        
+            
