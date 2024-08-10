@@ -102,17 +102,17 @@ class Game:
             raise RuntimeError("Game not initialized.")
             
 class StandardGame:
-    def __init__(self, deck, players, dealer, min_bet = 5, max_bet = 500):
+    def __init__(self, deck, players, dealer, min_bet=5, max_bet=500):
         self.deck = deck
         self.players = players
         self.dealer = dealer
         self.min_bet = min_bet
         self.max_bet = max_bet
-    
-    def deal_initial_cards(self):
-        num_initial_cards = 2 #Number of initial cards dealt.
 
-        for _ in range(num_initial_cards): #For the integer in the range of the value stored in num_initial_cards, repeat the loop (Twice).
+    def deal_initial_cards(self):
+        num_initial_cards = 2
+
+        for _ in range(num_initial_cards):
             for player_name in self.players:
                 player = self.players[player_name]
                 card = self.deck.deal(1)[0]
@@ -120,7 +120,7 @@ class StandardGame:
 
             card = self.deck.deal(1)[0]
             self.dealer.hand.append(card)
-    
+
     def place_initial_bets(self):
         for player_name in self.players:
             player = self.players[player_name]
@@ -130,8 +130,8 @@ class StandardGame:
                 self.betting_prompt(player)
 
     def natural_blackjack_check(self):
-        #Output status of hands after initial deal
-        print(f"Your Hand: {self.players["You"].hand}")
+        # Output status of hands after initial deal
+        print(f"Your Hand: {self.players['You'].hand}")
         print(f"Dealer's Face Up Card: {self.dealer.hand[0]}")
 
         dealer_upcard = self.dealer.hand[0]
@@ -144,15 +144,16 @@ class StandardGame:
                 player.hand_value = self.calculate_hand_value(player.hand)
                 if player.hand_value == 21:
                     print(f"{player.name} has a natural blackjack!")
-                    player.status = ['inactive']
+                    player.status = 'inactive'
                     player.chip_balance += Payouts.natural_blackjack(player.bet)
-                    print (player.chip_balance)
+                    print(player.chip_balance)
                     print(player.hand)
             self.game_round_logic()
-    
 
-    #Working Here! =====================================================
     def game_round_logic(self):
+        dealer_bust = False
+
+        # Process each player's turn
         for player_name in self.players:
             player = self.players[player_name]
             if player.status == 'active':
@@ -160,46 +161,97 @@ class StandardGame:
                     self.AI_round_decision_logic(player)
                 else:
                     self.round_decision(player)
-        for player_name in self.players:
-            player = self.players[player_name]
-            if player.status == 'active':
+
+        # Process Dealer's turn
+        while self.calculate_hand_value(self.dealer.hand) < 17:
+            self.hit(self.dealer)
+            if self.dealer.hand_value > 21:
+                dealer_bust = True
+                self.dealer.status = "inactive"
+                print("Dealer has gone bust!")
+                break
+
+        # Determine the outcome of the round
+        if dealer_bust:
+            for player_name in self.players:
+                player = self.players[player_name]
+                if player.status == 'active':
+                    player.chip_balance += Payouts.standard(player.bet)
+        else:
+            for player_name in self.players:
+                player = self.players[player_name]
+                if player.status == 'active':
+                    self.player_win_decision(player, self.dealer)
+
+    def AI_round_decision_logic(self, player):
+        while player.hand_value < 17:
+            self.hit(player)
+            player.hand_value = self.calculate_hand_value(player.hand)
+        self.player_bust_determination(player)
+
+    def round_decision(self, player):
+        while True:
+            player_decision = input("Enter 'st' to stand, 'h' to hit, 'dd' to double down, or 'sp' to split:")
+            validated_player_decision = ivs.is_string_input(player_decision)
+            print(validated_player_decision)
+            if validated_player_decision == 'st':
+                self.stand(player)
+                break
+            elif validated_player_decision == 'h':
+                self.hit(player)
+                player.hand_value = self.calculate_hand_value(player.hand)
+                self.player_bust_determination(player)
+                if player.status == 'inactive':
+                    break  # Exit loop if player busts
+            elif validated_player_decision == 'dd':
+                self.double_down(player)
+                break
+            elif validated_player_decision == 'sp':
+                print('Player Split Logic.')
+            else:
+                print("That is not an acceptable option.")
 
     def betting_prompt(self, player):
         while True:
             player.bet = input("Enter your betting amount in multiples of 5. Min bet of $5, Max bet of $500:")
             player.bet = ivs.is_num_input(player.bet)
-               # Check if the bet is within the valid range and is a multiple of 5
             if player.bet is not None and self.min_bet <= player.bet <= self.max_bet and player.bet % 5 == 0:
                 player.chip_balance -= player.bet
                 print(f'{player.name} bets ${player.bet}.')
                 return player.bet
             else:
                 print(f"Bet must be between ${self.min_bet} and ${self.max_bet} and in multiples of 5.")
-    
+
     def AI_betting_logic(self, player):
         player.bet = self.min_bet
         player.chip_balance -= player.bet
         print(f'{player.name} bets ${player.bet}.')
 
     def hit(self, player):
+        print(f'{player.name} draws a card.')
         card = self.deck.deal(1)[0]
         player.hand.append(card)
-        
+        player.hand_value = self.calculate_hand_value(player.hand)  # Update hand value
+
     def stand(self, player):
-        print(f"{self.players[player]} stands.")
+        print(f"{player.name} stands.")
 
     def double_down(self, player):
-        self.players[player]["chips"] -= self.players[player]["bet"]
-        self.players[player]["bet"] *= 2
+        player.chip_balance -= player.bet
+        player.bet *= 2
         self.hit(player)
-        self.stand(player)
+        self.player_bust_determination(player)
 
-    
+    def player_bust_determination(self, player):
+        if player.hand_value > 21:
+            player.status = "inactive"
+            print(f"{player.name} has busted!")
+
     def calculate_hand_value(self, cards):
         hand_value = 0
         num_aces = 0
         for card in cards:
-            if card.rank in ['J','Q','K']:
+            if card.rank in ['J', 'Q', 'K']:
                 hand_value += 10
             elif card.rank == 'A':
                 hand_value += 11
@@ -212,22 +264,16 @@ class StandardGame:
             num_aces -= 1
         return hand_value
 
-    def determine_round_winner(self):
-        dealer_value = self.calculate_hand_value(self.dealer["cards"])
-        results = {}
-        for player in self.players:
-            if player["status"] == "waiting":
-                player_value = self.calculate_hand_value(self.players[player]["cards"])
-                if player_value > 21:
-                    results[player] = "Bust"
-                elif dealer_value > 21 or player_value > dealer_value:
-                    results[player] = "Win"
-                elif player_value < dealer_value:
-                    results[player] = "Lose"
-                else:
-                    results[player] = "Push"
-        return results
-
+    def player_win_decision(self, player, dealer):
+        if player.hand_value > dealer.hand_value:
+            print(f"{player.name} wins with a hand of {player.hand_value} to {dealer.hand_value}.")
+            player.chip_balance += Payouts.standard(player.bet)
+        elif player.hand_value < dealer.hand_value:
+            print(f"{player.name} loses with a hand of {player.hand_value} to {dealer.hand_value}.")
+        else:
+            print(f"{player.name} has a push with the dealer, no winner.")
+            player.chip_balance += player.bet
+#====================
     def start(self):
         #Place Initial bet
         self.place_initial_bets()

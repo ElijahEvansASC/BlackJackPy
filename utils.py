@@ -14,6 +14,6 @@ class InputValidateAndSanitize:
 
     @staticmethod
     def is_string_input(user_input):
-        user_input = user_input.strip()
-        user_input = user_input.lower()
+        cleaned_input = user_input.strip().lower()
+        return cleaned_input
         
